@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PFA | Système de dosage automatique intelligent de peinture</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <img src="uas-logo.jpg" alt="UAS" />
+    <h2>Connexion administrateur</h2>
+    <p>Accès à l’interface de supervision PFA</p>
+    <input id="loginUser" placeholder="Utilisateur" value="admin">
+    <input id="loginPass" placeholder="Mot de passe" type="password" value="admin123">
+    <button id="loginBtn">Se connecter</button>
+    <small>Démo locale : admin / admin123. À changer dans le fichier .env.</small>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo"><img src="uas-logo.jpg" alt="Logo UAS"></div>
+    <div class="brand-text">
+      <h1>Système de dosage automatique intelligent de peinture</h1>
+      <p>Interface PFA avancée | ESP32, capteurs, pompes, base de données, email et CSV</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="themeBtn">Mode soleil</button>
+    <button id="realBtn">Mode réel</button>
+    <button id="logoutBtn" class="secondary">Déconnexion</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="card dashboard">
+    <div class="card-title">
+      <h2>Dashboard statistiques</h2>
+      <span id="backendStatus" class="badge">Backend...</span>
+    </div>
+    <div class="stats-grid">
+      <div class="stat"><span id="statCycles">0</span><small>Cycles totaux</small></div>
+      <div class="stat ok"><span id="statDone">0</span><small>Cycles terminés</small></div>
+      <div class="stat warn"><span id="statBlocked">0</span><small>Cycles bloqués</small></div>
+      <div class="stat danger"><span id="statErrors">0</span><small>Erreurs</small></div>
+      <div class="stat wide"><span id="statVolume">0 mL</span><small>Volume total dosé</small></div>
+    </div>
+  </section>
+
+  <section class="card esp-panel">
+    <div class="card-title">
+      <h2>ESP32 live panel</h2>
+      <span class="badge">Simulation temps réel</span>
+    </div>
+    <div class="esp-live">
+      <div class="esp-board">
+        <strong>ESP32</strong>
+        <small id="espStatus">READY</small>
+      </div>
+      <div class="pin-table">
+        <div><b>GPIO23</b><span id="pin-blue">Pompe Bleu : OFF</span></div>
+        <div><b>GPIO22</b><span id="pin-red">Pompe Rouge : OFF</span></div>
+        <div><b>GPIO21</b><span id="pin-yellow">Pompe Jaune : OFF</span></div>
+        <div><b>GPIO19</b><span id="pin-green">Pompe Vert : OFF</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card supervision-card">
+    <div class="card-title">
+      <h2>Supervision du prototype</h2>
+      <span class="badge">Hardware + Software</span>
+    </div>
+
+    <div class="supervision">
+      <div class="supervision-block">
+        <h3>Réservoirs de référence</h3>
+        <div id="reservoirs" class="reservoirs"></div>
+      </div>
+
+      <div class="controller">
+        <div class="esp">
+          <strong>ESP32</strong>
+          <span>Unité de commande</span>
+        </div>
+        <div class="relay">Module relais 4 canaux</div>
+        <div class="wiring">
+          <div>GPIO23 → Pompe bleue</div>
+          <div>GPIO22 → Pompe rouge</div>
+          <div>GPIO21 → Pompe jaune</div>
+          <div>GPIO19 → Pompe verte</div>
+        </div>
+      </div>
+
+      <div class="mix">
+        <div class="mix-tank">
+          <div id="mixLiquid"></div>
+        </div>
+        <h3>Réservoir de mélange</h3>
+        <p>Volume : <b id="mixVolume">0</b> mL</p>
+        <p>Couleur estimée : <b id="mixColor">Aucune</b></p>
+        <button id="cleanBtn" class="secondary">Nettoyer</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <div class="card-title">
+      <h2>Panneau opérateur</h2>
+    </div>
+
+    <div class="panel-content">
+      <div id="status" class="status ok">Système prêt</div>
+
+      <label>Mode automatique</label>
+      <select id="recipeSelect"></select>
+      <button id="autoBtn">Lancer dosage automatique</button>
+
+      <label>Mode manuel</label>
+      <div class="manual">
+        <input id="blueInput" type="number" placeholder="Bleu mL" value="0" min="0">
+        <input id="redInput" type="number" placeholder="Rouge mL" value="0" min="0">
+        <input id="yellowInput" type="number" placeholder="Jaune mL" value="0" min="0">
+        <input id="greenInput" type="number" placeholder="Vert mL" value="0" min="0">
+      </div>
+      <button id="manualBtn">Lancer dosage manuel</button>
+
+      <label>Cartes capteurs niveau faible</label>
+      <div class="sensor-cards">
+        <button class="sensor-card" data-color="blue"><b>Capteur Bleu</b><span>Normal</span></button>
+        <button class="sensor-card" data-color="red"><b>Capteur Rouge</b><span>Normal</span></button>
+        <button class="sensor-card" data-color="yellow"><b>Capteur Jaune</b><span>Normal</span></button>
+        <button class="sensor-card" data-color="green"><b>Capteur Vert</b><span>Normal</span></button>
+      </div>
+
+      <button id="stopBtn" class="danger">Arrêt d’urgence</button>
+      <button id="refillBtn" class="secondary">Remplir les réservoirs</button>
+    </div>
+  </section>
+
+  <section class="card real-mode" id="realMode">
+    <div class="card-title">
+      <h2>Mode visualisation réelle</h2>
+      <span class="badge">Animation du passage du fluide</span>
+    </div>
+    <div class="machine">
+      <div class="machine-label">Prototype réel simulé : réservoirs → pompes → tuyaux → mélange</div>
+      <div class="pump p-blue" id="pump-blue">Pompe Bleu</div>
+      <div class="pump p-red" id="pump-red">Pompe Rouge</div>
+      <div class="pump p-yellow" id="pump-yellow">Pompe Jaune</div>
+      <div class="pump p-green" id="pump-green">Pompe Vert</div>
+      <div class="pipe blue" id="pipe-blue"></div>
+      <div class="pipe red" id="pipe-red"></div>
+      <div class="pipe yellow" id="pipe-yellow"></div>
+      <div class="pipe green" id="pipe-green"></div>
+      <div class="vertical-pipe"></div>
+      <div class="real-tank"><div id="realMixLiquid"></div></div>
+    </div>
+  </section>
+
+  <section class="card data-card">
+    <div class="card-title">
+      <h2>Historique de dosage</h2>
+      <div class="mini-actions">
+        <button id="downloadHistory">Télécharger CSV</button>
+        <button id="emailHistory">Envoyer email</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+        <tr>
+          <th>Date</th><th>Mode</th><th>Couleur</th><th>Bleu</th><th>Rouge</th><th>Jaune</th><th>Vert</th><th>Total</th><th>État</th>
+        </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card data-card">
+    <div class="card-title">
+      <h2>Historique des erreurs</h2>
+      <div class="mini-actions">
+        <button id="downloadErrors">Télécharger CSV</button>
+        <button id="emailErrors">Envoyer email</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+        <tr><th>Date</th><th>Type</th><th>Détails</th><th>Sévérité</th></tr>
+        </thead>
+        <tbody id="errorsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card messages-card">
+    <div class="card-title">
+      <h2>Messages système</h2>
+    </div>
+    <div id="log" class="log"></div>
+  </section>
+</main>
+
+<footer>
+  © Projet de Fin d’Année PFA | Système de dosage automatique intelligent de peinture | Université Arabe des Sciences
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
