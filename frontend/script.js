@@ -15,6 +15,33 @@ let token = localStorage.getItem("pfa_token") || "";
 
 const $ = (id) => document.getElementById(id);
 
+
+function showLoginError(message) {
+  const errorBox = $("loginError");
+  errorBox.textContent = message;
+  errorBox.classList.remove("show");
+  void errorBox.offsetWidth;
+  errorBox.classList.add("show");
+}
+
+function hideLoginError() {
+  const errorBox = $("loginError");
+  if (!errorBox) return;
+  errorBox.textContent = "";
+  errorBox.classList.remove("show");
+}
+
+function setLoginLoading(isLoading) {
+  const card = document.querySelector(".login-card");
+  const button = $("loginBtn");
+  if (!card || !button) return;
+
+  card.classList.toggle("loading", isLoading);
+  button.disabled = isLoading;
+  button.textContent = isLoading ? "Connexion..." : "Se connecter";
+}
+
+
 function log(message) {
   const box = $("log");
   const time = new Date().toLocaleTimeString();
@@ -50,25 +77,43 @@ async function apiPost(url, data = {}) {
 }
 
 async function login() {
+  const username = $("loginUser").value.trim();
+  const password = $("loginPass").value;
+
+  hideLoginError();
+
+  if (!username || !password) {
+    showLoginError("Veuillez saisir le nom d’utilisateur et le mot de passe.");
+    return;
+  }
+
+  setLoginLoading(true);
+
   try {
-    const result = await fetch("/api/auth/login", {
+    const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: $("loginUser").value,
-        password: $("loginPass").value
-      })
-    }).then(r => {
-      if (!r.ok) throw new Error("Identifiants incorrects");
-      return r.json();
+      body: JSON.stringify({ username, password })
     });
+
+    const result = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(result.error || "Identifiants incorrects.");
+    }
 
     token = result.token;
     localStorage.setItem("pfa_token", token);
     $("loginScreen").style.display = "none";
     await init();
   } catch (e) {
-    alert("Connexion refusée");
+    localStorage.removeItem("pfa_token");
+    token = "";
+    showLoginError("Identifiants incorrects. Vérifiez le nom d’utilisateur et le mot de passe.");
+    $("loginPass").value = "";
+    $("loginPass").focus();
+  } finally {
+    setLoginLoading(false);
   }
 }
 
@@ -90,8 +135,10 @@ async function init() {
     await refreshAll();
     log("Backend connecté. Interface prête.");
   } catch (e) {
-    setStatus("Backend non connecté", true);
-    log("Erreur : backend non connecté. Lancez npm start.");
+    localStorage.removeItem("pfa_token");
+    token = "";
+    $("loginScreen").style.display = "grid";
+    showLoginError("Session expirée ou serveur indisponible. Reconnectez-vous.");
   }
 }
 
@@ -273,6 +320,14 @@ function wait(ms) {
 }
 
 $("loginBtn").addEventListener("click", login);
+
+["loginUser", "loginPass"].forEach((id) => {
+  $(id).addEventListener("keydown", (event) => {
+    if (event.key === "Enter") login();
+  });
+
+  $(id).addEventListener("input", hideLoginError);
+});
 
 $("logoutBtn").addEventListener("click", () => {
   localStorage.removeItem("pfa_token");

@@ -63,6 +63,33 @@ body {
 .login-card h2 { margin: 6px 0 0; text-align: center; }
 .login-card p, .login-card small { text-align: center; color: #cbd5e1; }
 
+.login-error {
+  display: none;
+  padding: 11px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(239, 68, 68, .65);
+  background: rgba(239, 68, 68, .16);
+  color: #fecaca;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.35;
+  animation: shake .25s linear;
+}
+
+.login-error.show { display: block; }
+
+.login-card.loading #loginBtn {
+  opacity: .75;
+  cursor: wait;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+
 .topbar {
   position: sticky;
   top: 0;
